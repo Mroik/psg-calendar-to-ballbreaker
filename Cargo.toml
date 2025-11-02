@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clokwerk = "0.4.0"
 google-calendar = "0.7.0"
 teloxide = "0.17.0"
 tokio = "1.48.0"
