@@ -1,12 +1,17 @@
 use std::time::Duration;
 
+use anyhow::Result;
 use clokwerk::{AsyncScheduler, Interval, Job};
 use google_calendar::Client;
+use log::error;
+use rusqlite::Connection;
 use teloxide::Bot;
 use tokio::{
     sync::mpsc::{Receiver, Sender, channel},
     time::sleep,
 };
+
+use crate::sql::insert_done_record;
 
 enum BBMessage {
     Stop,
@@ -27,10 +32,12 @@ struct BallBreaker {
     t_client: Bot,
     rx: Receiver<BBMessage>,
     tx: Sender<BBMessage>,
+    sql_conn: Connection,
     config: Config,
 }
 
 impl BallBreaker {
+    // TODO: Create DB if not exist
     fn new(
         config: Config,
         telegram_token: &str,
@@ -39,25 +46,27 @@ impl BallBreaker {
         redirect_uri: &str,
         token: &str,
         refresh_token: &str,
-    ) -> Self {
+        db_loc: &str,
+    ) -> Result<Self> {
         let g_client = Client::new(client_id, client_secret, redirect_uri, token, refresh_token);
         let t_client = Bot::new(telegram_token);
 
         let (tx, rx) = channel(100);
+        let sql_conn = Connection::open(db_loc)?;
 
-        BallBreaker {
+        Ok(BallBreaker {
             g_client,
             t_client,
             rx,
             tx,
             config,
-        }
+            sql_conn,
+        })
     }
 
     async fn start(&mut self, time: &str) {
-        let tx = self.tx.clone();
         let (tick_killer, mut tick_killer_r) = channel(1);
-        let mut scheduler = create_tick_generator(tx, time).await;
+        let mut scheduler = create_tick_generator(self.tx.clone(), time).await;
         tokio::join!(self.run(tick_killer), async move {
             loop {
                 tokio::select! {
@@ -96,9 +105,11 @@ impl BallBreaker {
         todo!()
     }
 
-    // TODO
     async fn mark_as_done(&mut self, calendar_id: &str, event_id: &str) {
-        todo!()
+        match insert_done_record(&self.sql_conn, event_id, calendar_id) {
+            Ok(_) => (),
+            Err(e) => error!("Error on `done insert`: {e}"),
+        };
     }
 }
 
