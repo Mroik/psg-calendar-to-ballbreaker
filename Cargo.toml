@@ -1,0 +1,8 @@
+[package]
+name = "psg-calendar-to-ballbreaker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+google-calendar = "0.7.0"
+teloxide = "0.17.0"
