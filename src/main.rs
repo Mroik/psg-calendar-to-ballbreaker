@@ -4,10 +4,13 @@ use anyhow::Result;
 use chrono::TimeDelta;
 use teloxide::Bot;
 
-use crate::{data_handler::DataHandler, scheduled::generate_scheduler};
+use crate::{
+    data_handler::DataHandler, scheduled::generate_scheduler, telegram::generate_dispatcher,
+};
 
 mod data_handler;
 mod scheduled;
+mod telegram;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,9 +35,10 @@ async fn main() -> Result<()> {
     let telegram_token = env::var("TELEGRAM_TOKEN")?;
     let bot = Bot::new(telegram_token);
 
-    let scheduler = generate_scheduler(bot, data_handler, &scheduled_time).await;
+    let scheduler = generate_scheduler(bot.clone(), data_handler, &scheduled_time).await;
+    let mut dispatcher = generate_dispatcher(bot).await;
 
-    tokio::join!(scheduler);
+    tokio::join!(scheduler, dispatcher.dispatch());
 
     Ok(())
 }
