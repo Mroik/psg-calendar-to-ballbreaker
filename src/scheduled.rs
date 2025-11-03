@@ -21,9 +21,10 @@ pub async fn generate_scheduler(
         let bot = bot.clone();
         async move {
             let events = data_handler.get_events().await.unwrap();
+            println!("{:?}", events);
             // TODO
-            let message = "";
-            bot.send_message(Recipient::Id(ChatId(0)), message)
+            let message = "Ciao come va";
+            bot.send_message(Recipient::Id(ChatId(data_handler.chat_id)), message)
                 .await
                 .unwrap();
         }

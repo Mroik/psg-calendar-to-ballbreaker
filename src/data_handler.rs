@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{Local, TimeDelta};
+use chrono::{Duration, Local};
 use gcal_rs::{Event, EventClient, GCalClient, OAuth};
 use rusqlite::Connection;
 use tokio::sync::Mutex;
@@ -8,14 +8,14 @@ use tokio::sync::Mutex;
 pub struct DataHandler {
     g_client: EventClient,
     sql_conn: Mutex<Connection>,
-    time_window: TimeDelta,
-    chat_id: String,
+    time_window: Duration,
+    pub chat_id: i64,
     calendar_id: String,
 }
 
 impl DataHandler {
     pub async fn new(
-        time_window: TimeDelta,
+        time_window: Duration,
         chat_id: &str,
         calendar_id: &str,
         client_id: &str,
@@ -29,7 +29,7 @@ impl DataHandler {
             .naive()
             .await?;
         let (_, g_client) = GCalClient::new(token, None)?.clients();
-        let chat_id = String::from(chat_id);
+        let chat_id = chat_id.parse()?;
         let calendar_id = String::from(calendar_id);
 
         Ok(DataHandler {
@@ -59,7 +59,7 @@ impl DataHandler {
             .list(
                 self.calendar_id.clone(),
                 Local::now(),
-                Local::now().checked_add_signed(self.time_window).unwrap(),
+                Local::now() + self.time_window,
             )
             .await?)
     }
