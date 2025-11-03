@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
+chrono = "0.4.42"
 clokwerk = "0.4.0"
 env_logger = "0.11.8"
 gcal_rs = "0.1.7"

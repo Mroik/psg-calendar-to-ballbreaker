@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
+use chrono::{Local, TimeDelta};
 use gcal_rs::{Event, EventClient, GCalClient, OAuth};
 use rusqlite::Connection;
 
@@ -53,6 +54,15 @@ impl DataHandler {
     }
 
     async fn get_events(&mut self) -> Result<Vec<Event>> {
-        todo!()
+        Ok(self
+            .g_client
+            .list(
+                self.calendar_id.clone(),
+                Local::now(),
+                Local::now()
+                    .checked_add_signed(TimeDelta::weeks(2))
+                    .unwrap(),
+            )
+            .await?)
     }
 }
