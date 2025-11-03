@@ -1,5 +1,6 @@
-use std::{sync::Arc, time::Duration};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
+use chrono::{DateTime, Local, NaiveDate};
 use clokwerk::{AsyncScheduler, Interval, Job};
 use teloxide::{
     Bot,
@@ -21,9 +22,27 @@ pub async fn generate_scheduler(
         let bot = bot.clone();
         async move {
             let events = data_handler.get_events().await.unwrap();
-            println!("{:?}", events);
-            // TODO
-            let message = "Ciao come va";
+            let parts = events
+                .iter()
+                .map(|event| {
+                    let mut s = String::from("[");
+
+                    let date = match event.start.date_time.as_ref() {
+                        Some(v) => DateTime::<Local>::from_str(v).unwrap().date_naive(),
+                        None => NaiveDate::from_str(event.start.date.as_ref().unwrap()).unwrap(),
+                    }
+                    .format("%d/%m/%y")
+                    .to_string();
+
+                    s.push_str(&date);
+                    s.push_str("] ");
+                    s.push_str(&event.summary);
+                    s
+                })
+                .collect::<Vec<String>>()
+                .join("\n");
+            let mut message = String::from("These are the pending tasks:\n");
+            message.push_str(&parts);
             bot.send_message(Recipient::Id(ChatId(data_handler.chat_id)), message)
                 .await
                 .unwrap();
