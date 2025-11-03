@@ -1,5 +1,40 @@
-mod data_handler;
+use std::{env, sync::Arc};
 
-fn main() {
-    println!("Hello, world!");
+use anyhow::Result;
+use chrono::TimeDelta;
+use teloxide::Bot;
+
+use crate::{data_handler::DataHandler, scheduled::generate_scheduler};
+
+mod data_handler;
+mod scheduled;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let time_window = TimeDelta::days(env::var("TIME_WINDOW")?.parse()?);
+    let chat_id = env::var("CHAT_ID")?;
+    let calendar_id = env::var("CALENDAR_ID")?;
+    let client_id = env::var("CLIENT_ID")?;
+    let client_secret = env::var("CLIENT_SECRET")?;
+    let data_handler = Arc::new(
+        DataHandler::new(
+            time_window,
+            &chat_id,
+            &calendar_id,
+            &client_id,
+            &client_secret,
+            "database.sqlite3",
+        )
+        .await?,
+    );
+
+    let scheduled_time = env::var("SCHEDULED_TIME")?;
+    let telegram_token = env::var("TELEGRAM_TOKEN")?;
+    let bot = Bot::new(telegram_token);
+
+    let scheduler = generate_scheduler(bot, data_handler, &scheduled_time).await;
+
+    tokio::join!(scheduler);
+
+    Ok(())
 }

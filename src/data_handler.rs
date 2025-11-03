@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use anyhow::Result;
 use chrono::{Local, TimeDelta};
 use gcal_rs::{Event, EventClient, GCalClient, OAuth};
@@ -7,17 +5,17 @@ use rusqlite::Connection;
 use tokio::sync::Mutex;
 
 /// Handles data retrieval with google's API and persistent data
-struct DataHandler {
+pub struct DataHandler {
     g_client: EventClient,
     sql_conn: Mutex<Connection>,
-    time_window: Duration,
+    time_window: TimeDelta,
     chat_id: String,
     calendar_id: String,
 }
 
 impl DataHandler {
-    async fn new(
-        time_window: Duration,
+    pub async fn new(
+        time_window: TimeDelta,
         chat_id: &str,
         calendar_id: &str,
         client_id: &str,
@@ -43,7 +41,7 @@ impl DataHandler {
         })
     }
 
-    async fn mark_as_done(&self, event_id: &str) -> Result<()> {
+    pub async fn mark_as_done(&self, event_id: &str) -> Result<()> {
         self.sql_conn.lock().await.execute(
             "INSERT OR IGNORE INTO done (event_id, calendar_id, timestamp) VALUES (?, ?, ?)",
             [
@@ -55,15 +53,13 @@ impl DataHandler {
         Ok(())
     }
 
-    async fn get_events(&self) -> Result<Vec<Event>> {
+    pub async fn get_events(&self) -> Result<Vec<Event>> {
         Ok(self
             .g_client
             .list(
                 self.calendar_id.clone(),
                 Local::now(),
-                Local::now()
-                    .checked_add_signed(TimeDelta::weeks(2))
-                    .unwrap(),
+                Local::now().checked_add_signed(self.time_window).unwrap(),
             )
             .await?)
     }
