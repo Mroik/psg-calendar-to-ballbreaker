@@ -59,9 +59,7 @@ async fn reply_callback(
 
 async fn undone(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
     let selferino = bot.get_me().await?;
-    let id = match Command::parse(update.text().unwrap(), selferino.username())? {
-        Command::Todo(id) => id,
-    };
+    let Command::Todo(id) = Command::parse(update.text().unwrap(), selferino.username())?;
     data_handler.mark_as_undone(id).await?;
     let chat_id = update.chat.id;
     let to_delete = bot
@@ -73,14 +71,14 @@ async fn undone(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Re
 
     bot.delete_message(chat_id, update.id).await?;
 
-    spawn((|| async move {
+    spawn(async move {
         sleep(Duration::from_mins(3)).await;
         bot.clone()
             .delete_message(chat_id, to_delete.id)
             .await
             .unwrap();
         info!("Deleted info message");
-    })());
+    });
 
     Ok(())
 }

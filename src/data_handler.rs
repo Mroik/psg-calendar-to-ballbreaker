@@ -26,6 +26,7 @@ impl DataHandler {
         let sql_conn = Connection::open(db_loc)?;
         create_db(&sql_conn).await?;
 
+        // TODO: Save token somewhere to reuse on restart
         let token = OAuth::new(client_id, client_secret, "http://localhost:5000/auth")
             .naive()
             .await?;
