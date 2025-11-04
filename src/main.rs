@@ -39,8 +39,8 @@ async fn main() -> Result<()> {
     let telegram_token = env::var("TELEGRAM_TOKEN").expect("TELEGRAM_TOKEN missing");
     let bot = Bot::new(telegram_token);
 
-    let scheduler = generate_scheduler(bot.clone(), data_handler, &scheduled_time).await;
-    let mut dispatcher = generate_dispatcher(bot).await;
+    let scheduler = generate_scheduler(bot.clone(), data_handler.clone(), &scheduled_time).await;
+    let mut dispatcher = generate_dispatcher(bot, data_handler).await;
 
     tokio::join!(scheduler, dispatcher.dispatch());
 

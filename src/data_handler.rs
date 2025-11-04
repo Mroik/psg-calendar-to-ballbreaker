@@ -1,9 +1,7 @@
 use anyhow::Result;
 use chrono::{Duration, Local};
 use gcal_rs::{Event, EventClient, GCalClient, OAuth};
-use rusqlite::{
-    Connection, fallible_streaming_iterator::FallibleStreamingIterator, params_from_iter,
-};
+use rusqlite::{Connection, params_from_iter};
 use tokio::sync::Mutex;
 
 /// Handles data retrieval with google's API and persistent data
@@ -45,7 +43,7 @@ impl DataHandler {
         })
     }
 
-    pub async fn mark_as_done(&self, id: &str) -> Result<()> {
+    pub async fn mark_as_done(&self, id: i64) -> Result<()> {
         self.sql_conn
             .lock()
             .await
