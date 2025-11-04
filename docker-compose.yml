@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      dockerfile: ./Dockerfile
+      context: ./
+    environment:
+      - CALENDAR_ID=${CALENDAR_ID}
+      - CHAT_ID=${CHAT_ID}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
+      - RUST_LOG=${RUST_LOG}
+      - SCHEDULED_TIME=${SCHEDULED_TIME}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TIME_WINDOW=${TIME_WINDOW}
+    #volumes:
+      #- ./folder:/app/folder

@@ -10,7 +10,7 @@ clokwerk = "0.4.0"
 env_logger = "0.11.8"
 gcal_rs = "0.1.7"
 log = "0.4.28"
-rusqlite = "0.37.0"
+rusqlite = { version = "0.37.0", features = ["bundled"] }
 teloxide = { version = "0.17.0", features = ["macros"] }
 tokio = "1.48.0"
 
