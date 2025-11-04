@@ -1,17 +1,20 @@
 use anyhow::Result;
 use chrono::{Duration, Local};
-use gcal_rs::{Event, EventClient, GCalClient, OAuth};
+use gcal_rs::{Event, EventClient, GCalClient, OAuth, OToken};
 use log::info;
 use rusqlite::{Connection, params_from_iter};
 use tokio::sync::Mutex;
 
 /// Handles data retrieval with google's API and persistent data
 pub struct DataHandler {
-    g_client: EventClient,
+    g_client: Mutex<EventClient>,
     sql_conn: Mutex<Connection>,
     time_window: Duration,
+    otoken: Mutex<OToken>,
     pub chat_id: i64,
     calendar_id: String,
+    client_id: String,
+    client_secret: String,
 }
 
 impl DataHandler {
@@ -27,21 +30,25 @@ impl DataHandler {
         create_db(&sql_conn).await?;
 
         // TODO: Save token somewhere to reuse on restart
-        let token = OAuth::new(client_id, client_secret, "http://localhost:5000/auth")
+        let otoken = OAuth::new(client_id, client_secret, "http://localhost:5000/auth")
             .naive()
             .await?;
-        let (_, g_client) = GCalClient::new(token, None)?.clients();
+        let g_client = GCalClient::new(otoken.clone(), None)?.event_client();
+
         let chat_id = chat_id.parse()?;
         let calendar_id = String::from(calendar_id);
 
         sql_conn.pragma_update(None, "foreign_keys", "1")?;
 
         Ok(DataHandler {
-            g_client,
+            g_client: Mutex::new(g_client),
             sql_conn: Mutex::new(sql_conn),
             time_window,
+            otoken: Mutex::new(otoken),
             chat_id,
             calendar_id,
+            client_id: client_id.to_string(),
+            client_secret: client_secret.to_string(),
         })
     }
 
@@ -64,9 +71,28 @@ impl DataHandler {
     }
 
     pub async fn get_events(&self) -> Result<Vec<(i64, Event)>> {
+        {
+            let mut tok = self.otoken.lock().await;
+            let mut g_c = self.g_client.lock().await;
+            if tok.is_expired() {
+                let a = OAuth::new(
+                    &self.client_id,
+                    &self.client_secret,
+                    "http://localhost:5000",
+                )
+                .exhange_refresh(tok.refresh.as_ref().unwrap())
+                .await?;
+                tok.take_over(a);
+                *g_c = GCalClient::new(tok.clone(), None)?.event_client();
+                info!("Token refreshed");
+            }
+        }
+
         let conn = self.sql_conn.lock().await;
         let mut events = self
             .g_client
+            .lock()
+            .await
             .list(
                 self.calendar_id.clone(),
                 Local::now(),
