@@ -25,9 +25,8 @@ pub async fn generate_scheduler(
             let events = data_handler.get_events().await.unwrap();
             let parts = events
                 .iter()
-                .enumerate()
                 .map(|(i, event)| {
-                    let mut s = format!("{} - [", i + 1);
+                    let mut s = format!("{} - [", i);
 
                     let date = match event.start.date_time.as_ref() {
                         Some(v) => DateTime::<Local>::from_str(v).unwrap().date_naive(),
@@ -48,7 +47,6 @@ pub async fn generate_scheduler(
 
             let keyboard: Vec<Vec<InlineKeyboardButton>> = events
                 .iter()
-                .enumerate()
                 .map(|(i, event)| {
                     let date = match event.start.date_time.as_ref() {
                         Some(v) => DateTime::<Local>::from_str(v).unwrap().date_naive(),
@@ -57,9 +55,10 @@ pub async fn generate_scheduler(
                     .format("%d/%m/%y")
                     .to_string();
 
-                    // TODO
-                    let but =
-                        InlineKeyboardButton::callback(format!("{} - {}", i + 1, date), "TODO");
+                    let but = InlineKeyboardButton::callback(
+                        format!("{} - {}", i, date),
+                        format!("{}", i),
+                    );
                     vec![but]
                 })
                 .collect();

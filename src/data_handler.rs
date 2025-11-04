@@ -1,7 +1,9 @@
 use anyhow::Result;
 use chrono::{Duration, Local};
 use gcal_rs::{Event, EventClient, GCalClient, OAuth};
-use rusqlite::Connection;
+use rusqlite::{
+    Connection, fallible_streaming_iterator::FallibleStreamingIterator, params_from_iter,
+};
 use tokio::sync::Mutex;
 
 /// Handles data retrieval with google's API and persistent data
@@ -32,6 +34,8 @@ impl DataHandler {
         let chat_id = chat_id.parse()?;
         let calendar_id = String::from(calendar_id);
 
+        sql_conn.pragma_update(None, "foreign_keys", "1")?;
+
         Ok(DataHandler {
             g_client,
             sql_conn: Mutex::new(sql_conn),
@@ -41,37 +45,83 @@ impl DataHandler {
         })
     }
 
-    pub async fn mark_as_done(&self, event_id: &str) -> Result<()> {
-        self.sql_conn.lock().await.execute(
-            "INSERT OR IGNORE INTO done (event_id, calendar_id, timestamp) VALUES (?, ?, ?)",
-            [
-                event_id,
-                &self.calendar_id,
-                &std::time::UNIX_EPOCH.elapsed()?.as_secs().to_string(),
-            ],
-        )?;
+    pub async fn mark_as_done(&self, id: &str) -> Result<()> {
+        self.sql_conn
+            .lock()
+            .await
+            .execute("INSERT OR IGNORE INTO done (id) VALUES (?)", [id])?;
         Ok(())
     }
 
-    pub async fn get_events(&self) -> Result<Vec<Event>> {
-        Ok(self
+    pub async fn get_events(&self) -> Result<Vec<(i64, Event)>> {
+        let conn = self.sql_conn.lock().await;
+        let mut events = self
             .g_client
             .list(
                 self.calendar_id.clone(),
                 Local::now(),
                 Local::now() + self.time_window,
             )
-            .await?)
+            .await?;
+
+        let mut query = String::from("INSERT OR IGNORE INTO events (event_id) VALUES ");
+        let placeholders = events
+            .iter()
+            .map(|_| String::from("(?)"))
+            .collect::<Vec<String>>()
+            .join(", ");
+        query.push_str(&placeholders);
+
+        let params = params_from_iter(events.iter().map(|event| event.id.clone()));
+        conn.execute(&query, params)?;
+
+        let mut query = String::from(
+            "SELECT events.id as id, events.event_id as event_id FROM events
+            LEFT JOIN done ON events.id = done.id
+            WHERE done.id IS NULL AND events.event_id IN (",
+        );
+        let a = events
+            .iter()
+            .map(|_| String::from("?"))
+            .collect::<Vec<String>>()
+            .join(", ");
+        query.push_str(&a);
+        query.push(')');
+
+        let params = params_from_iter(events.iter().map(|event| event.id.clone()));
+        let mut v = conn.prepare(&query)?;
+
+        let to_keep = v
+            .query_map(params, |row| {
+                Ok((
+                    row.get::<usize, i64>(0).unwrap(),
+                    row.get::<usize, String>(1).unwrap(),
+                ))
+            })?
+            .map(|v| v.unwrap())
+            .collect::<Vec<(i64, String)>>();
+
+        events.retain(|ev| to_keep.iter().any(|e| ev.id == e.1));
+        Ok(events
+            .iter()
+            .map(|ev| (to_keep.iter().find(|e| e.1 == ev.id).unwrap().0, ev.clone()))
+            .collect::<Vec<(i64, Event)>>())
     }
 }
 
 async fn create_db(sql_conn: &Connection) -> Result<()> {
     sql_conn.execute(
-        "CREATE TABLE IF NOT EXISTS done (
+        "CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_id INTEGER NOT NULL,
-            calendar_id INTEGER NOT NULL,
-            timestamp INTEGER NOT NULL,
-            PRIMARY KEY (event_id, calendar_id)
+            UNIQUE (event_id)
+        )",
+        (),
+    )?;
+    sql_conn.execute(
+        "CREATE TABLE IF NOT EXISTS done (
+            id INTEGER PRIMARY KEY,
+            FOREIGN KEY (id) REFERENCES events (id)
         )",
         (),
     )?;
