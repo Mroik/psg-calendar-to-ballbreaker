@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chrono::{Duration, Local};
 use gcal_rs::{Event, EventClient, GCalClient, OAuth};
+use log::info;
 use rusqlite::{Connection, params_from_iter};
 use tokio::sync::Mutex;
 
@@ -48,6 +49,7 @@ impl DataHandler {
             .lock()
             .await
             .execute("INSERT OR IGNORE INTO done (id) VALUES (?)", [id])?;
+        info!("Task {} marked as done", id);
         Ok(())
     }
 
@@ -56,6 +58,7 @@ impl DataHandler {
             .lock()
             .await
             .execute("DELETE FROM done WHERE id = ?", [id])?;
+        info!("Task {} marked as TODO", id);
         Ok(())
     }
 
@@ -80,6 +83,7 @@ impl DataHandler {
 
         let params = params_from_iter(events.iter().map(|event| event.id.clone()));
         conn.execute(&query, params)?;
+        info!("New events inserted");
 
         let mut query = String::from(
             "SELECT events.id as id, events.event_id as event_id FROM events
@@ -106,6 +110,7 @@ impl DataHandler {
             })?
             .map(|v| v.unwrap())
             .collect::<Vec<(i64, String)>>();
+        info!("Events filtered out");
 
         events.retain(|ev| to_keep.iter().any(|e| ev.id == e.1));
         Ok(events

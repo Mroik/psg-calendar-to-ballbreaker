@@ -2,6 +2,7 @@ use std::{str::FromStr, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Local, NaiveDate};
 use clokwerk::{AsyncScheduler, Interval, Job};
+use log::info;
 use teloxide::{
     Bot,
     payloads::SendMessageSetters,
@@ -23,6 +24,10 @@ pub async fn generate_scheduler(
         let bot = bot.clone();
         async move {
             let events = data_handler.get_events().await.unwrap();
+            if events.is_empty() {
+                return;
+            }
+
             let parts = events
                 .iter()
                 .map(|(i, event)| {
@@ -67,10 +72,12 @@ pub async fn generate_scheduler(
                 .reply_markup(ReplyMarkup::inline_kb(keyboard))
                 .await
                 .unwrap();
+            info!("Reminder sent");
         }
     });
 
     async move {
+        info!("Scheduler started");
         loop {
             scheduler.run_pending().await;
             sleep(Duration::from_secs(30)).await;

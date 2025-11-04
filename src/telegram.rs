@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use anyhow::{Error, Result};
+use log::info;
 use teloxide::{
     Bot,
     dispatching::{DefaultKey, HandlerExt, UpdateFilterExt},
@@ -38,6 +39,7 @@ pub async fn generate_dispatcher(
                 .map(move |_: Message| command_data_handler.clone())
                 .branch(case![Command::Todo(i64)].endpoint(undone)),
         );
+    info!("About to deploy dispatcher");
     Dispatcher::builder(bot, schema).build()
 }
 
@@ -77,6 +79,7 @@ async fn undone(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Re
             .delete_message(chat_id, to_delete.id)
             .await
             .unwrap();
+        info!("Deleted info message");
     })());
 
     Ok(())

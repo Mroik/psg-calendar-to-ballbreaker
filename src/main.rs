@@ -14,6 +14,7 @@ mod telegram;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
     let time_window = Duration::days(
         env::var("TIME_WINDOW")
             .expect("TIME_WINDOW missing")
