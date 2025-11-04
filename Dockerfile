@@ -5,7 +5,7 @@ WORKDIR /app
 RUN cargo b -r
 
 FROM alpine:3.20.3
-RUN apk add --no-cache tzdata pkgconfig openssl musl-dev libressl-dev
+RUN apk add --no-cache tzdata
 ENV TZ=Europe/Rome
 RUN mkdir /app
 COPY --from=builder /app/target/release/psg-calendar-to-ballbreaker /app
