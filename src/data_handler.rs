@@ -51,6 +51,14 @@ impl DataHandler {
         Ok(())
     }
 
+    pub async fn mark_as_undone(&self, id: i64) -> Result<()> {
+        self.sql_conn
+            .lock()
+            .await
+            .execute("DELETE FROM done WHERE id = ?", [id])?;
+        Ok(())
+    }
+
     pub async fn get_events(&self) -> Result<Vec<(i64, Event)>> {
         let conn = self.sql_conn.lock().await;
         let mut events = self
