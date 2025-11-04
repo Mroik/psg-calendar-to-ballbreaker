@@ -13,3 +13,8 @@ log = "0.4.28"
 rusqlite = "0.37.0"
 teloxide = { version = "0.17.0", features = ["macros"] }
 tokio = "1.48.0"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
