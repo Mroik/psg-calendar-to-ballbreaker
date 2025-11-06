@@ -15,6 +15,7 @@ pub struct DataHandler {
     calendar_id: String,
     client_id: String,
     client_secret: String,
+    refresh: String,
 }
 
 impl DataHandler {
@@ -33,6 +34,7 @@ impl DataHandler {
         let otoken = OAuth::new(client_id, client_secret, "http://localhost:5000/auth")
             .naive()
             .await?;
+        let refresh = otoken.refresh.clone().unwrap();
         let g_client = GCalClient::new(otoken.clone(), None)?.event_client();
 
         let chat_id = chat_id.parse()?;
@@ -49,6 +51,7 @@ impl DataHandler {
             calendar_id,
             client_id: client_id.to_string(),
             client_secret: client_secret.to_string(),
+            refresh,
         })
     }
 
@@ -80,7 +83,7 @@ impl DataHandler {
                     &self.client_secret,
                     "http://localhost:5000",
                 )
-                .exhange_refresh(tok.refresh.as_ref().unwrap())
+                .exhange_refresh(&self.refresh)
                 .await?;
                 tok.take_over(a);
                 *g_c = GCalClient::new(tok.clone(), None)?.event_client();
