@@ -95,7 +95,9 @@ async fn undone(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Re
     Ok(())
 }
 
-async fn force(bot: Bot, data_handler: Arc<DataHandler>, _: Message) -> Result<()> {
+async fn force(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
+    bot.delete_message(update.chat.id.clone(), update.id)
+        .await?;
     format_events_and_send(data_handler, bot).await;
     Ok(())
 }
