@@ -1,4 +1,8 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{
+    str::FromStr,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 
 use chrono::{DateTime, Local, NaiveDate};
 use clokwerk::{AsyncScheduler, Interval, Job};
@@ -48,11 +52,15 @@ pub async fn format_events_and_send(data_handler: Arc<DataHandler>, bot: Bot) {
             let date = match event.start.date_time.as_ref() {
                 Some(v) => DateTime::<Local>::from_str(v).unwrap().date_naive(),
                 None => NaiveDate::from_str(event.start.date.as_ref().unwrap()).unwrap(),
-            }
-            .format("%d/%m/%y")
-            .to_string();
+            };
+            let date_string = date.format("%d/%m/%y").to_string();
 
-            s.push_str(&date);
+            let current = DateTime::<Local>::from(SystemTime::now()).date_naive();
+            if (date - current).num_days() < 2 {
+                s.push_str("⚠️");
+            }
+
+            s.push_str(&date_string);
             s.push_str("] ");
             s.push_str(&event.summary);
             s
