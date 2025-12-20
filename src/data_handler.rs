@@ -102,6 +102,9 @@ impl DataHandler {
                 Local::now() + self.time_window,
             )
             .await?;
+        if events.is_empty() {
+            return Ok(Vec::new());
+        }
 
         let mut query = String::from("INSERT OR IGNORE INTO events (event_id) VALUES ");
         let placeholders = events
