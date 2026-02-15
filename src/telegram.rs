@@ -4,7 +4,7 @@ use anyhow::{Error, Result};
 use log::info;
 use teloxide::{
     Bot,
-    dispatching::{DefaultKey, HandlerExt, UpdateFilterExt},
+    dispatching::{DefaultKey, HandlerExt, UpdateFilterExt, dialogue::GetChatId},
     dptree::case,
     payloads::AnswerCallbackQuerySetters,
     prelude::{Dispatcher, Requester},
@@ -57,6 +57,14 @@ async fn reply_callback(
     data_handler: Arc<DataHandler>,
     update: CallbackQuery,
 ) -> Result<()> {
+    match update.chat_id() {
+        Some(c_i) if c_i.0 != data_handler.chat_id => {
+            return Ok(());
+        }
+        Some(_) => (),
+        None => return Ok(()),
+    }
+
     let data: i64 = update.data.unwrap().parse()?;
     data_handler.mark_as_done(data).await?;
     bot.answer_callback_query(update.id)
@@ -67,6 +75,14 @@ async fn reply_callback(
 }
 
 async fn undone(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
+    match update.chat_id() {
+        Some(c_i) if c_i.0 != data_handler.chat_id => {
+            return Ok(());
+        }
+        Some(_) => (),
+        None => return Ok(()),
+    }
+
     let selferino = bot.get_me().await?;
     let id = match Command::parse(update.text().unwrap(), selferino.username())? {
         Command::Todo(id) => id,
