@@ -28,7 +28,7 @@ impl DataHandler {
         db_loc: &str,
     ) -> Result<Self> {
         let sql_conn = Connection::open(db_loc)?;
-        create_db(&sql_conn).await?;
+        Self::create_db(&sql_conn).await?;
 
         // TODO: Save token somewhere to reuse on restart
         let otoken = OAuth::new(client_id, client_secret, "http://localhost:5000/auth")
@@ -151,23 +151,24 @@ impl DataHandler {
             .map(|ev| (to_keep.iter().find(|e| e.1 == ev.id).unwrap().0, ev.clone()))
             .collect::<Vec<(i64, Event)>>())
     }
-}
 
-async fn create_db(sql_conn: &Connection) -> Result<()> {
-    sql_conn.execute(
-        "CREATE TABLE IF NOT EXISTS events (
+    #[inline]
+    async fn create_db(sql_conn: &Connection) -> Result<()> {
+        sql_conn.execute(
+            "CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_id INTEGER NOT NULL,
             UNIQUE (event_id)
         )",
-        (),
-    )?;
-    sql_conn.execute(
-        "CREATE TABLE IF NOT EXISTS done (
+            (),
+        )?;
+        sql_conn.execute(
+            "CREATE TABLE IF NOT EXISTS done (
             id INTEGER PRIMARY KEY,
             FOREIGN KEY (id) REFERENCES events (id)
         )",
-        (),
-    )?;
-    Ok(())
+            (),
+        )?;
+        Ok(())
+    }
 }
