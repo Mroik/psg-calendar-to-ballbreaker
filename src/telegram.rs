@@ -38,7 +38,7 @@ enum Command {
 pub async fn generate_dispatcher(
     bot: Bot,
     data_handler: Arc<DataHandler>,
-) -> Dispatcher<Bot, Error, DefaultKey> {
+) -> Result<Dispatcher<Bot, Error, DefaultKey>> {
     let todo_data_handler = data_handler.clone();
     let force_data_handler = data_handler.clone();
     let generate_invite_data_handler = data_handler.clone();
@@ -66,8 +66,9 @@ pub async fn generate_dispatcher(
                 .map(move |_: Message| generate_invite_data_handler.clone())
                 .branch(case![Command::Invite(i64)].endpoint(generate_invite)),
         );
+    bot.set_my_commands(Command::bot_commands()).await?;
     info!("About to deploy dispatcher");
-    Dispatcher::builder(bot, schema).build()
+    Ok(Dispatcher::builder(bot, schema).build())
 }
 
 async fn reply_callback(
