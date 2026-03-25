@@ -27,11 +27,11 @@ const ORG_NAME: &str = "Polimi Social Games";
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "Available commands")]
 enum Command {
-    #[command(description = "Mark as not done")]
+    #[command(description = "Mark as not done - /todo <ID>")]
     Todo(i64),
-    #[command(description = "Force data querying")]
+    #[command(description = "Force data querying - /force")]
     Force,
-    #[command(description = "Generate ics")]
+    #[command(description = "Generate ics - /invite <ID>")]
     Invite(i64),
 }
 
