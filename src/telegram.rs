@@ -199,9 +199,11 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
     data.push_str("END:VEVENT\r\n");
     data.push_str("END:VCALENDAR\r\n");
 
+    let filename = format!("PSG_event_{}.ics", dt);
+
     bot.send_document(
         update.chat.id,
-        InputFile::memory(data).file_name("evento_PSG.ics"),
+        InputFile::memory(data).file_name(filename),
     )
     .await?;
     Ok(())
