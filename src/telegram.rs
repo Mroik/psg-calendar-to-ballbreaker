@@ -112,7 +112,7 @@ async fn undone(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Re
         )
         .await?;
 
-    bot.delete_message(chat_id, update.id).await?;
+    let _ = bot.delete_message(chat_id, update.id).await;
 
     spawn(async move {
         sleep(Duration::from_mins(3)).await;
@@ -131,7 +131,7 @@ async fn force(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Res
         return Ok(());
     }
 
-    bot.delete_message(update.chat.id, update.id).await?;
+    let _ = bot.delete_message(update.chat.id, update.id).await;
     format_events_and_send(data_handler, bot).await;
     Ok(())
 }
@@ -150,7 +150,7 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
         _ => unreachable!(),
     };
 
-    bot.delete_message(update.chat.id, update.id).await?;
+    let _ = bot.delete_message(update.chat.id, update.id).await;
 
     let ev = match data_handler
         .get_events()
@@ -177,8 +177,10 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
     };
 
     let dt = datetime2ical(
-        &DateTime::from_timestamp_secs(UNIX_EPOCH.elapsed().unwrap().as_secs() as i64).unwrap(),
+        &DateTime::from_timestamp_secs(UNIX_EPOCH.elapsed()?.as_secs() as i64).unwrap(),
     );
+    // TODO: Rework DTSTART and DTEND values as not every event states starting and ending hours.
+    // unwrap() crashes the program without giving teloxide the change to handle the error.
     let start = datetime2ical(&DateTime::from_str(&ev.start.date_time.unwrap())?);
     let end = datetime2ical(&DateTime::from_str(&ev.end.date_time.unwrap())?);
 
@@ -201,10 +203,7 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
 
     let filename = format!("PSG_event_{}.ics", dt);
 
-    bot.send_document(
-        update.chat.id,
-        InputFile::memory(data).file_name(filename),
-    )
-    .await?;
+    bot.send_document(update.chat.id, InputFile::memory(data).file_name(filename))
+        .await?;
     Ok(())
 }
