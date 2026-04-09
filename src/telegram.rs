@@ -1,11 +1,12 @@
 use std::{
+    fmt::Display,
     str::FromStr,
     sync::Arc,
     time::{Duration, UNIX_EPOCH},
 };
 
 use anyhow::{Error, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use log::info;
 use teloxide::{
     Bot,
@@ -33,6 +34,20 @@ enum Command {
     Force,
     #[command(description = "Generate ics - /invite <ID>")]
     Invite(i64),
+}
+
+enum DateType {
+    DateTime(DateTime<Utc>),
+    Date(NaiveDate),
+}
+
+impl Display for DateType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DateType::DateTime(date_time) => write!(f, ":{}", date_time.format("%Y%m%dT%H%M%SZ")),
+            DateType::Date(date) => write!(f, ";VALUE=DATE:{}", date.format("%Y%m%d")),
+        }
+    }
 }
 
 pub async fn generate_dispatcher(
@@ -136,10 +151,6 @@ async fn force(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Res
     Ok(())
 }
 
-fn datetime2ical(d: &DateTime<Utc>) -> String {
-    d.format("%Y%m%dT%H%M%SZ").to_string()
-}
-
 async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
     if update.chat.id.0 != data_handler.chat_id {
         return Ok(());
@@ -176,13 +187,17 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
         }
     };
 
-    let dt = datetime2ical(
-        &DateTime::from_timestamp_secs(UNIX_EPOCH.elapsed()?.as_secs() as i64).unwrap(),
-    );
-    // TODO: Rework DTSTART and DTEND values as not every event states starting and ending hours.
-    // unwrap() crashes the program without giving teloxide the change to handle the error.
-    let start = datetime2ical(&DateTime::from_str(&ev.start.date_time.unwrap())?);
-    let end = datetime2ical(&DateTime::from_str(&ev.end.date_time.unwrap())?);
+    let dt = DateTime::from_timestamp_secs(UNIX_EPOCH.elapsed()?.as_secs() as i64)
+        .unwrap()
+        .format("%Y%m%dT%H%M%SZ");
+    let start = match &ev.start.date_time {
+        Some(a) => DateType::DateTime(DateTime::from_str(a)?),
+        None => DateType::Date(NaiveDate::from_str(ev.start.date.as_ref().unwrap())?),
+    };
+    let end = match &ev.end.date_time {
+        Some(a) => DateType::DateTime(DateTime::from_str(a)?),
+        None => DateType::Date(NaiveDate::from_str(ev.end.date.as_ref().unwrap())?),
+    };
 
     let mut data = String::new();
     data.push_str("BEGIN:VCALENDAR\r\n");
@@ -195,8 +210,8 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
         ORG_NAME, PSG_EMAIL, PSG_EMAIL
     ));
     data.push_str(&format!("DTSTAMP:{}\r\n", dt));
-    data.push_str(&format!("DTSTART:{}\r\n", start));
-    data.push_str(&format!("DTEND:{}\r\n", end));
+    data.push_str(&format!("DTSTART{}\r\n", start));
+    data.push_str(&format!("DTEND{}\r\n", end));
     data.push_str(&format!("SUMMARY:{}\r\n", ev.summary));
     data.push_str("END:VEVENT\r\n");
     data.push_str("END:VCALENDAR\r\n");
