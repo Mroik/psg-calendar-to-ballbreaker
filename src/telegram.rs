@@ -218,7 +218,15 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
 
     let filename = format!("PSG_event_{}.ics", dt);
 
-    bot.send_document(update.chat.id, InputFile::memory(data).file_name(filename))
+    let to_delete = bot
+        .send_document(update.chat.id, InputFile::memory(data).file_name(filename))
         .await?;
+
+    spawn(async move {
+        bot.delete_message(update.chat.id, to_delete.id)
+            .await
+            .unwrap();
+        info!("Deleted {:?}", update);
+    });
     Ok(())
 }
