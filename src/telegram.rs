@@ -223,6 +223,7 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
         .await?;
 
     spawn(async move {
+        sleep(Duration::from_mins(3)).await;
         bot.delete_message(update.chat.id, to_delete.id)
             .await
             .unwrap();
