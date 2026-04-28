@@ -6,7 +6,7 @@ use std::{
 
 use chrono::{DateTime, Local, NaiveDate};
 use clokwerk::{AsyncScheduler, Interval, Job};
-use log::info;
+use log::{error, info};
 use teloxide::{
     Bot,
     payloads::SendMessageSetters,
@@ -39,7 +39,25 @@ pub async fn generate_scheduler(
 }
 
 pub async fn format_events_and_send(data_handler: Arc<DataHandler>, bot: Bot) {
-    let events = data_handler.get_events().await.unwrap();
+    let events;
+    let mut attempts = 3;
+    loop {
+        attempts -= 1;
+        match data_handler.get_events().await {
+            Ok(e) => {
+                events = e;
+                break;
+            }
+            Err(e) => {
+                error!("{}", e);
+                if attempts == 0 {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                continue;
+            }
+        }
+    }
     if events.is_empty() {
         return;
     }
