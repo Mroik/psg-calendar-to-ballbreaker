@@ -10,11 +10,10 @@ use chrono::{DateTime, NaiveDate, Utc};
 use log::info;
 use teloxide::{
     Bot,
-    dispatching::{DefaultKey, HandlerExt, UpdateFilterExt, dialogue::GetChatId},
+    dispatching::{DefaultKey, HandlerExt, UpdateFilterExt},
     dptree::case,
-    payloads::AnswerCallbackQuerySetters,
     prelude::{Dispatcher, Requester},
-    types::{CallbackQuery, InputFile, Message, Update},
+    types::{InputFile, Message, Update},
     utils::command::BotCommands,
 };
 use tokio::{spawn, time::sleep};
@@ -28,6 +27,8 @@ const ORG_NAME: &str = "Polimi Social Games";
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "Available commands")]
 enum Command {
+    #[command(description = "Mark as done - /done <ID>")]
+    Done(i64),
     #[command(description = "Mark as not done - /todo <ID>")]
     Todo(i64),
     #[command(description = "Force data querying - /force")]
@@ -59,9 +60,10 @@ pub async fn generate_dispatcher(
     let generate_invite_data_handler = data_handler.clone();
     let schema = teloxide::dptree::entry()
         .branch(
-            Update::filter_callback_query()
-                .map(move |_: CallbackQuery| data_handler.clone())
-                .endpoint(reply_callback),
+            Update::filter_message()
+                .filter_command::<Command>()
+                .map(move |_: Message| data_handler.clone())
+                .branch(case![Command::Done(i64)].endpoint(done)),
         )
         .branch(
             Update::filter_message()
@@ -86,25 +88,36 @@ pub async fn generate_dispatcher(
     Ok(Dispatcher::builder(bot, schema).build())
 }
 
-async fn reply_callback(
-    bot: Bot,
-    data_handler: Arc<DataHandler>,
-    update: CallbackQuery,
-) -> Result<()> {
-    match update.chat_id() {
-        Some(c_i) if c_i.0 != data_handler.chat_id => {
-            return Ok(());
-        }
-        Some(_) => (),
-        None => return Ok(()),
+async fn done(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
+    if update.chat.id.0 != data_handler.chat_id {
+        return Ok(());
     }
 
-    let data: i64 = update.data.unwrap().parse()?;
-    data_handler.mark_as_done(data).await?;
-    bot.answer_callback_query(update.id)
-        .text(format!("Task with ID {} has been marked as done", data))
-        .show_alert(true)
+    let selferino = bot.get_me().await?;
+    let id = match Command::parse(update.text().unwrap(), selferino.username())? {
+        Command::Done(id) => id,
+        _ => unreachable!(),
+    };
+    data_handler.mark_as_done(id).await?;
+    let chat_id = update.chat.id;
+    let to_delete = bot
+        .send_message(
+            chat_id,
+            format!("Task with ID {} has been marked as done", id),
+        )
         .await?;
+
+    let _ = bot.delete_message(chat_id, update.id).await;
+
+    spawn(async move {
+        sleep(Duration::from_mins(3)).await;
+        bot.clone()
+            .delete_message(chat_id, to_delete.id)
+            .await
+            .unwrap();
+        info!("Deleted info message");
+    });
+
     Ok(())
 }
 

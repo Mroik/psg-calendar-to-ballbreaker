@@ -9,9 +9,8 @@ use clokwerk::{AsyncScheduler, Interval, Job};
 use log::{error, info};
 use teloxide::{
     Bot,
-    payloads::SendMessageSetters,
     prelude::Requester,
-    types::{ChatId, InlineKeyboardButton, Recipient, ReplyMarkup},
+    types::{ChatId, Recipient},
 };
 use tokio::time::sleep;
 
@@ -82,23 +81,7 @@ pub async fn format_events_and_send(data_handler: Arc<DataHandler>, bot: Bot) {
         message.push('\n');
     });
 
-    let keyboard: Vec<Vec<InlineKeyboardButton>> = events
-        .iter()
-        .map(|(i, event)| {
-            let date = match event.start.date_time.as_ref() {
-                Some(v) => DateTime::<Local>::from_str(v).unwrap().date_naive(),
-                None => NaiveDate::from_str(event.start.date.as_ref().unwrap()).unwrap(),
-            }
-            .format("%d/%m/%y")
-            .to_string();
-
-            let but = InlineKeyboardButton::callback(format!("{} - {}", i, date), format!("{}", i));
-            vec![but]
-        })
-        .collect();
-
     bot.send_message(Recipient::Id(ChatId(data_handler.chat_id)), message)
-        .reply_markup(ReplyMarkup::inline_kb(keyboard))
         .await
         .unwrap();
     info!("Reminder sent");
