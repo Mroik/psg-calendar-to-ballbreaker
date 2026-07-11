@@ -11,7 +11,7 @@ env_logger = "0.11.8"
 gcal_rs = "0.1.7"
 log = "0.4.28"
 rusqlite = { version = "0.37.0", features = ["bundled"] }
-teloxide = { version = "0.17.0", features = ["macros"] }
+teloxide = { git = "https://github.com/teloxide/teloxide.git", rev = "0ca6f7d22410fc043bc52c165f2e69741fd83f1c", features = ["macros"] }
 tokio = "1.48.0"
 
 [profile.release]
