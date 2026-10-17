@@ -6,6 +6,7 @@ services:
     environment:
       - CALENDAR_ID=${CALENDAR_ID}
       - CHAT_ID=${CHAT_ID}
+      - CHAT_ID_ABN=${CHAT_ID_ABN}
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_SECRET=${CLIENT_SECRET}
       - RUST_LOG=${RUST_LOG}
