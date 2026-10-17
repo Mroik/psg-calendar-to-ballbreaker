@@ -20,14 +20,16 @@ async fn main() -> Result<()> {
             .expect("TIME_WINDOW missing")
             .parse()?,
     );
-    let chat_id = env::var("CHAT_ID").expect("CHAT_ID missing");
+    let chat_id_executive = env::var("CHAT_ID").expect("CHAT_ID missing");
+    let chat_id_abn= env::var("CHAT_ID_ABN").expect("CHAT_ID_ABN missing");
     let calendar_id = env::var("CALENDAR_ID").expect("CALENDAR_ID missing");
     let client_id = env::var("CLIENT_ID").expect("CLIENT_ID missing");
     let client_secret = env::var("CLIENT_SECRET").expect("CLIENT_SECRET missing");
     let data_handler = Arc::new(
         DataHandler::new(
             time_window,
-            &chat_id,
+            &chat_id_executive,
+            &chat_id_abn,
             &calendar_id,
             &client_id,
             &client_secret,

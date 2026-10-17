@@ -11,7 +11,8 @@ pub struct DataHandler {
     sql_conn: Mutex<Connection>,
     time_window: Duration,
     otoken: Mutex<OToken>,
-    pub chat_id: i64,
+    pub chat_id_executive: i64,
+    pub chat_id_abn: i64,
     calendar_id: String,
     client_id: String,
     client_secret: String,
@@ -21,7 +22,8 @@ pub struct DataHandler {
 impl DataHandler {
     pub async fn new(
         time_window: Duration,
-        chat_id: &str,
+        chat_id_executive: &str,
+        chat_id_abn: &str,
         calendar_id: &str,
         client_id: &str,
         client_secret: &str,
@@ -37,7 +39,8 @@ impl DataHandler {
         let refresh = otoken.refresh.clone().unwrap();
         let g_client = GCalClient::new(otoken.clone(), None)?.event_client();
 
-        let chat_id = chat_id.parse()?;
+        let chat_id_executive = chat_id_executive.parse()?;
+        let chat_id_abn = chat_id_abn.parse()?;
         let calendar_id = String::from(calendar_id);
 
         sql_conn.pragma_update(None, "foreign_keys", "1")?;
@@ -47,7 +50,8 @@ impl DataHandler {
             sql_conn: Mutex::new(sql_conn),
             time_window,
             otoken: Mutex::new(otoken),
-            chat_id,
+            chat_id_executive,
+            chat_id_abn,
             calendar_id,
             client_id: client_id.to_string(),
             client_secret: client_secret.to_string(),
@@ -73,7 +77,7 @@ impl DataHandler {
         Ok(())
     }
 
-    pub async fn get_events(&self) -> Result<Vec<(i64, Event)>> {
+    async fn fetch_data(&self) -> Result<Vec<Event>> {
         {
             let mut tok = self.otoken.lock().await;
             let mut g_c = self.g_client.lock().await;
@@ -92,7 +96,7 @@ impl DataHandler {
         }
 
         let conn = self.sql_conn.lock().await;
-        let mut events = self
+        let events = self
             .g_client
             .lock()
             .await
@@ -117,7 +121,16 @@ impl DataHandler {
         let params = params_from_iter(events.iter().map(|event| event.id.clone()));
         conn.execute(&query, params)?;
         info!("New events inserted");
+        Ok(events)
+    }
 
+    pub async fn get_events<F>(&self, filter: F) -> Result<Vec<(i64, Event)>>
+    where
+        F: FnMut(&Event) -> bool,
+    {
+        let mut events = self.fetch_data().await?;
+
+        let conn = self.sql_conn.lock().await;
         let mut query = String::from(
             "SELECT events.id as id, events.event_id as event_id FROM events
             LEFT JOIN done ON events.id = done.id
@@ -146,6 +159,7 @@ impl DataHandler {
         info!("Events filtered out");
 
         events.retain(|ev| to_keep.iter().any(|e| ev.id == e.1));
+        events.retain(filter);
         Ok(events
             .iter()
             .map(|ev| (to_keep.iter().find(|e| e.1 == ev.id).unwrap().0, ev.clone()))

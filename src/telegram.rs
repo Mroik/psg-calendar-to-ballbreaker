@@ -18,7 +18,7 @@ use teloxide::{
 };
 use tokio::{spawn, time::sleep};
 
-use crate::{data_handler::DataHandler, scheduled::format_events_and_send};
+use crate::{data_handler::DataHandler, scheduled::format_and_send};
 
 const VCAL_PRODID: &str = "PSG Calendar To Ballbreaker";
 const PSG_EMAIL: &str = "polimisocialgames@gmail.com";
@@ -89,7 +89,7 @@ pub async fn generate_dispatcher(
 }
 
 async fn done(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
-    if update.chat.id.0 != data_handler.chat_id {
+    if update.chat.id.0 != data_handler.chat_id_executive {
         return Ok(());
     }
 
@@ -122,7 +122,7 @@ async fn done(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Resu
 }
 
 async fn undone(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
-    if update.chat.id.0 != data_handler.chat_id {
+    if update.chat.id.0 != data_handler.chat_id_executive {
         return Ok(());
     }
 
@@ -155,17 +155,17 @@ async fn undone(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Re
 }
 
 async fn force(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
-    if update.chat.id.0 != data_handler.chat_id {
+    if update.chat.id.0 != data_handler.chat_id_executive {
         return Ok(());
     }
 
     let _ = bot.delete_message(update.chat.id, update.id).await;
-    format_events_and_send(data_handler, bot).await;
+    format_and_send(data_handler, bot, update.chat.id.0, |_| true).await;
     Ok(())
 }
 
 async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Message) -> Result<()> {
-    if update.chat.id.0 != data_handler.chat_id {
+    if update.chat.id.0 != data_handler.chat_id_executive {
         return Ok(());
     }
 
@@ -177,7 +177,7 @@ async fn generate_invite(bot: Bot, data_handler: Arc<DataHandler>, update: Messa
     let _ = bot.delete_message(update.chat.id, update.id).await;
 
     let ev = match data_handler
-        .get_events()
+        .get_events(|_| true)
         .await?
         .iter()
         .find(|e| e.0 == id)
