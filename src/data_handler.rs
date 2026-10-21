@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use anyhow::Result;
 use chrono::{Duration, Local};
 use gcal_rs::{Event, EventClient, GCalClient, OAuth, OToken};
@@ -113,8 +115,8 @@ impl DataHandler {
         let mut query = String::from("INSERT OR IGNORE INTO events (event_id) VALUES ");
         let placeholders = events
             .iter()
-            .map(|_| String::from("(?)"))
-            .collect::<Vec<String>>()
+            .map(|_| Cow::from("(?)"))
+            .collect::<Vec<Cow<_>>>()
             .join(", ");
         query.push_str(&placeholders);
 
@@ -138,8 +140,8 @@ impl DataHandler {
         );
         let a = events
             .iter()
-            .map(|_| String::from("?"))
-            .collect::<Vec<String>>()
+            .map(|_| Cow::from("?"))
+            .collect::<Vec<Cow<_>>>()
             .join(", ");
         query.push_str(&a);
         query.push(')');
