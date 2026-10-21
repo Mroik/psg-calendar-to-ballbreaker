@@ -84,13 +84,13 @@ async fn format_events(events: &[(i64, Event)]) -> String {
 
 pub async fn format_and_send<F>(data_handler: Arc<DataHandler>, bot: Bot, chat_id: i64, filter: F)
 where
-    F: Clone + FnMut(&Event) -> bool,
+    F: Copy + FnMut(&Event) -> bool,
 {
     let events;
     let mut attempts = 3;
     loop {
         attempts -= 1;
-        match data_handler.get_events(filter.clone()).await {
+        match data_handler.get_events(filter).await {
             Ok(e) => {
                 events = e;
                 break;

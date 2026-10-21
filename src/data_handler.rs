@@ -126,7 +126,7 @@ impl DataHandler {
 
     pub async fn get_events<F>(&self, filter: F) -> Result<Vec<(i64, Event)>>
     where
-        F: FnMut(&Event) -> bool,
+        F: Copy + FnMut(&Event) -> bool,
     {
         let mut events = self.fetch_data().await?;
 
